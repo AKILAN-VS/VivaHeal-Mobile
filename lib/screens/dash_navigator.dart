@@ -25,65 +25,61 @@ class _DashboardState extends State<Dashboard> {
   DashboardStrings dashStrings = DashboardStrings();
   DashboardColors dashColors = DashboardColors();
   int selectedIndex = 0;
-  late bool onLog;
-  Map<String, dynamic>? patientData;
 
   @override
   void initState() {
     super.initState();
-    onLog = widget.onLog;
-    patientData = widget.patientData;
   }
 
-  // --- FIX IS HERE ---
-  // This safely handles the initial state change after login.
+  // ✅ Fixed onTabChanged — safe from setState/build conflicts
   void onTabChanged(int index) {
-    if (onLog) {
-      // This schedules the state change to happen right after the build is complete.
+    if (mounted && index != selectedIndex) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          selectedIndex = 0;
-          onLog = false; // Reset the flag
-        });
+        if (mounted) {
+          setState(() {
+            selectedIndex = index;
+          });
+        }
       });
-      return; // Exit early to avoid the second setState
     }
-
-    // This handles all normal tab changes after the initial one.
-    setState(() {
-      selectedIndex = index;
-    });
   }
-  // --- END OF FIX ---
 
   @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
     bool dev = screenSize.width < 600;
 
+    // ✅ Always ensure a valid logged-in user
     final currentUser = FirebaseAuth.instance.currentUser;
-
     if (currentUser == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    // ✅ Use UID from Firebase — guarantees a valid path
     final String patientId = currentUser.uid;
 
+    // ✅ Safely get patientData (if passed from login)
+    final patientData = widget.patientData ?? {};
+
+    // ✅ Define all pages here
     final List<Widget> pages = [
-      Dash(patientData: patientData ?? {}),
+      Dash(patientData: patientData),
       HistoryPage(patientId: patientId),
-      Uploads(),
-      Profile(patientData: patientData ?? {}),
+      Uploads(patientId: patientId),
+      Profile(patientData: patientData),
     ];
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(dev ? kToolbarHeight : 64),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        preferredSize: Size(
+          screenSize.width,
+          screenSize.height * min(0.08, 1.0),
+        ),
+        child: Stack(
           children: [
             Container(
+              height: 100,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: const BorderRadius.only(
@@ -123,7 +119,10 @@ class _DashboardState extends State<Dashboard> {
           ],
         ),
       ),
-      body: pages.length > selectedIndex ? pages[selectedIndex] : pages[0],
+
+      // ✅ IndexedStack prevents reloading on every tab change
+      body: IndexedStack(index: selectedIndex, children: pages),
+
       bottomNavigationBar: CustomBottomBar(
         dashStrings: dashStrings,
         dashColors: dashColors,
