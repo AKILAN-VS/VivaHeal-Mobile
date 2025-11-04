@@ -8,7 +8,7 @@ import 'package:vivatest/utils/text_styles.dart';
 import 'package:intl/intl.dart';
 
 class Profile extends StatefulWidget {
-  final Map<String, dynamic>? patientData; 
+  final Map<String, dynamic>? patientData; // Nullable to avoid errors
 
   const Profile({Key? key, this.patientData}) : super(key: key);
 
@@ -59,7 +59,7 @@ class _ProfileState extends State<Profile> {
                   children: [
                     ClipOval(
                       child: Image.asset(
-                        'assets/profilepic.png', 
+                        'assets/profilepic.png', // Replace with your placeholder
                         width: 90,
                         height: 90,
                         fit: BoxFit.cover,
@@ -250,12 +250,9 @@ class _ProfileState extends State<Profile> {
                         ),
                       ),
                     ),
-
-                    // Address
                     Padding(
                       padding: const EdgeInsets.all(4.0),
                       child: Container(
-                        height: 62,
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: dashColors.shadowBlack,
@@ -264,8 +261,14 @@ class _ProfileState extends State<Profile> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.only(
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 0,
+                          ),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
                                 height: 28,
@@ -284,27 +287,29 @@ class _ProfileState extends State<Profile> {
                                 ),
                               ),
                               const SizedBox(width: 20),
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Address",
-                                    style: TextStyles.monText(
-                                      fontSize: dev ? 16 : 22,
-                                      fontWeight: FontWeight.w500,
-                                      color: dashColors.textDarkColor,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Address",
+                                      style: TextStyles.monText(
+                                        fontSize: dev ? 16 : 22,
+                                        fontWeight: FontWeight.w500,
+                                        color: dashColors.textDarkColor,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    data['address'] ?? 'Not available',
-                                    style: TextStyles.monText(
-                                      fontSize: dev ? 14 : 20,
-                                      fontWeight: FontWeight.w500,
-                                      color: dashColors.textGreyColor,
+                                    Text(
+                                      data['address'] ?? 'Not available',
+                                      style: TextStyles.monText(
+                                        fontSize: dev ? 14 : 20,
+                                        fontWeight: FontWeight.w500,
+                                        color: dashColors.textGreyColor,
+                                      ),
+                                      softWrap: true,
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
