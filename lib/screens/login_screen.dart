@@ -24,6 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
   final FocusNode passwordFocusNode = FocusNode();
   bool isKeepMeSignedIn = false;
+  bool isLoading = false;
 
   LoginPageColors colorObj = LoginPageColors();
   LoginPageStrings stringObj = LoginPageStrings();
@@ -91,15 +92,15 @@ class _LoginPageState extends State<LoginPage> {
     String email = emailController.text.trim();
     String password = passwordController.text;
 
+    setState(() => isLoading = true); // ⏳ start loading
+
     try {
-      // 1️⃣ Sign in with Firebase Auth
       UserCredential userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
 
       final uid = userCredential.user?.uid;
       if (uid == null) throw Exception("User UID not found");
 
-      // 2️⃣ Fetch user data from patients collection (✅ FIXED HERE)
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('Patients')
           .doc(uid)
@@ -109,13 +110,14 @@ class _LoginPageState extends State<LoginPage> {
 
       final userData = userDoc.data() as Map<String, dynamic>;
 
-      // 3️⃣ Navigate to Dashboard and pass user data
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Dashboard(onLog: true, patientData: userData),
-        ),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Dashboard(onLog: true, patientData: userData),
+          ),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       String errorMsg;
       if (e.code == 'user-not-found') {
@@ -132,6 +134,8 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+    } finally {
+      if (mounted) setState(() => isLoading = false); // ✅ stop loading
     }
   }
 
@@ -140,6 +144,7 @@ class _LoginPageState extends State<LoginPage> {
     Size screenSize = MediaQuery.of(context).size;
     double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     bool dev = screenSize.width < 600;
+    bool isLoggedIn = false;
 
     return Scaffold(
       backgroundColor: colorObj.backgroundColor,
@@ -229,7 +234,7 @@ class _LoginPageState extends State<LoginPage> {
                               color: colorObj.textDarkColor,
                             ),
                             decoration: InputDecoration(
-                              hintText: stringObj.emailPlaceHolder,
+                              hintText: " " + stringObj.emailPlaceHolder,
                               hintStyle: TextStyles.monText(
                                 fontSize: dev ? 11 : 19,
                                 fontWeight: FontWeight.w400,
@@ -347,12 +352,42 @@ class _LoginPageState extends State<LoginPage> {
                           ),
 
                         const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  isKeepMeSignedIn = !isKeepMeSignedIn;
+                                });
+                              },
+                              icon: Icon(
+                                Icons.check_circle_outline_outlined,
+                                color: isKeepMeSignedIn
+                                    ? Colors.teal
+                                    : colorObj.textGreyColor,
+                                size: 23,
+                              ),
+                            ),
+                            Text(
+                              stringObj.keepMeSignedIn,
+                              style: TextStyles.monText(
+                                fontSize: dev ? 14 : 20,
+                                fontWeight: FontWeight.w600,
+                                color: colorObj.textDarkColor,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
 
                         Center(
                           child: gradientButton(
-                            buttonLabel: stringObj.loginButton,
+                            buttonLabel: isLoading
+                                ? "Logging in..."
+                                : stringObj.loginButton,
                             onPressed: () {
-                              if (validateAllFields()) {
+                              if (!isLoading && validateAllFields()) {
                                 loginWithEmail();
                               }
                             },
@@ -360,6 +395,7 @@ class _LoginPageState extends State<LoginPage> {
                             width: screenSize.width,
                           ),
                         ),
+
                         const SizedBox(height: 20),
 
                         Center(
