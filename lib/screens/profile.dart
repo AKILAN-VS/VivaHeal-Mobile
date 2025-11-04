@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:vivatest/screens/login_screen.dart';
 import 'package:vivatest/utils/dashboard_colors.dart';
 import 'package:vivatest/utils/dashboard_strings.dart';
 import 'package:vivatest/utils/text_styles.dart';
@@ -57,7 +59,7 @@ class _ProfileState extends State<Profile> {
                   children: [
                     ClipOval(
                       child: Image.asset(
-                        'assets/woman.png', // Replace with your placeholder
+                        'assets/profilepic.png', // Replace with your placeholder
                         width: 90,
                         height: 90,
                         fit: BoxFit.cover,
@@ -74,7 +76,7 @@ class _ProfileState extends State<Profile> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Patient ID: ${data['patientId'] ?? 'N/A'}",
+                      "Patient ID: ${data['vivaCardNumber'] ?? 'N/A'}",
                       style: TextStyles.monText(
                         fontSize: dev ? 16 : 22,
                         fontWeight: FontWeight.w500,
@@ -409,19 +411,31 @@ class _ProfileState extends State<Profile> {
                   ],
                 ),
               ),
-
-              // Logout Button
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/login');
+                    onPressed: () async {
+                      try {
+                        await FirebaseAuth.instance.signOut();
+
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginPage(),
+                          ),
+                          (route) => false, // clear all previous routes
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Logout failed: $e')),
+                        );
+                      }
                     },
                     child: Container(
                       width: 80,
                       decoration: BoxDecoration(
-                        color: dashColors.textDarkColor.withOpacity(0.1),
+                        color: dashColors.textDarkColor.withOpacity(0.0),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Padding(
@@ -439,7 +453,7 @@ class _ProfileState extends State<Profile> {
                               "Logout",
                               style: TextStyles.monText(
                                 fontSize: dev ? 14 : 20,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w700,
                                 color: dashColors.errorColorRed,
                               ),
                             ),
