@@ -304,7 +304,7 @@ class _DashState extends State<Dash> {
                             )
                             .where(
                               'status',
-                              whereIn: ['requested', 'confirmed'],
+                              whereIn: ['requested', 'upcoming', 'confirmed'],
                             )
                             .snapshots(),
                         builder: (context, snapshot) {
@@ -334,8 +334,12 @@ class _DashState extends State<Dash> {
                             final status = (doc['status'] ?? '')
                                 .toString()
                                 .toLowerCase();
-                            return status == 'requested' ||
-                                status == 'confirmed';
+                            final isCompleted = doc['isCompleted'] == true;
+                            // Show if it's requested, confirmed, or upcoming, but not completed
+                            return (status == 'requested' ||
+                                    status == 'confirmed' ||
+                                    status == 'upcoming') &&
+                                !isCompleted;
                           }).toList();
 
                           if (data.isEmpty) {
@@ -376,6 +380,9 @@ class _DashState extends State<Dash> {
                                   break;
                                 case 'requested':
                                   statusColor = Colors.orange.shade600;
+                                  break;
+                                case 'upcoming':
+                                  statusColor = Colors.blue.shade600;
                                   break;
                                 default:
                                   statusColor = Colors.grey.shade600;
