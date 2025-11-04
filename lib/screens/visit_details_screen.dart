@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:vivatest/utils/text_styles.dart'; // Make sure this import is correct
+import 'package:vivatest/utils/text_styles.dart'; 
 
 class VisitDetailsScreen extends StatelessWidget {
   final String patientId;
@@ -15,14 +15,13 @@ class VisitDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Set the background color for the screen
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           'Visit Details',
           style: TextStyles.monText(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        elevation: 0, // Remove shadow for a flatter look
+        elevation: 0, 
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
       ),
