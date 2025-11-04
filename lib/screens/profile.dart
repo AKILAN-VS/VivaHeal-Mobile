@@ -8,7 +8,7 @@ import 'package:vivatest/utils/text_styles.dart';
 import 'package:intl/intl.dart';
 
 class Profile extends StatefulWidget {
-  final Map<String, dynamic>? patientData; // Nullable to avoid errors
+  final Map<String, dynamic>? patientData; 
 
   const Profile({Key? key, this.patientData}) : super(key: key);
 
@@ -59,7 +59,7 @@ class _ProfileState extends State<Profile> {
                   children: [
                     ClipOval(
                       child: Image.asset(
-                        'assets/profilepic.png', // Replace with your placeholder
+                        'assets/profilepic.png', 
                         width: 90,
                         height: 90,
                         fit: BoxFit.cover,
