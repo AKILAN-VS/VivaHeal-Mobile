@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "515877483466",
-    "project_id": "vivaheal-4af28",
-    "storage_bucket": "vivaheal-4af28.firebasestorage.app"
+    "project_number": "your_project_number_here",
+    "project_id": "your_project_id_here",
+    "storage_bucket": "your_storage_bucket_here"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:515877483466:android:6b2e92ee1cfede4dc21533",
+        "mobilesdk_app_id": "your_app_id_here",
         "android_client_info": {
-          "package_name": "com.example.vivaheal"
+          "package_name": "your_package_name_here"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAfH5rfPKQQvJfnEjyNkNPkjqCrIdTuwDg"
+          "current_key": "your_api_key_here"
         }
       ],
       "services": {
@@ -26,15 +26,15 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:515877483466:android:4c50530cd95fbab7c21533",
+        "mobilesdk_app_id": "your_app_id_here",
         "android_client_info": {
-          "package_name": "com.example.vivatest"
+          "package_name": "your_package_name_here"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAfH5rfPKQQvJfnEjyNkNPkjqCrIdTuwDg"
+          "current_key": "your_api_key_here"
         }
       ],
       "services": {
