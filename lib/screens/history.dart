@@ -13,7 +13,7 @@ class HistoryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       // AppBar has been removed.
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('history')
@@ -120,11 +120,11 @@ class HistoryPage extends StatelessWidget {
         ),
         title: Text(
           reason,
-          style: TextStyles.monText(fontWeight: FontWeight.w600),
+          style: TextStyles.monText(fontWeight: FontWeight.w500),
         ),
         subtitle: Text(
-          "$doctorName\n$formattedDate",
-          style: TextStyles.monText(),
+          "Dr. $doctorName\n$formattedDate",
+          style: TextStyles.monText(fontWeight: FontWeight.w700),
         ),
         trailing: TextButton(
           onPressed: () {
