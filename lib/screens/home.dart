@@ -10,7 +10,7 @@ import 'package:vivatest/utils/dashboard_strings.dart';
 import 'package:vivatest/utils/text_styles.dart';
 
 class Dash extends StatefulWidget {
-  final Map<String, dynamic> patientData; // Receive full patient data
+  final Map<String, dynamic> patientData;
 
   const Dash({Key? key, required this.patientData}) : super(key: key);
 
@@ -21,8 +21,9 @@ class Dash extends StatefulWidget {
 class _DashState extends State<Dash> {
   DashboardStrings dashStrings = DashboardStrings();
   DashboardColors dashColors = DashboardColors();
-
   late Map<String, dynamic> data;
+  bool showCancelled = false;
+  String? patientName;
 
   Future<void> _openDialPad(String number) async {
     final Uri dialUri = Uri(scheme: 'tel', path: number);
@@ -38,7 +39,61 @@ class _DashState extends State<Dash> {
   @override
   void initState() {
     super.initState();
-    data = widget.patientData; // Already have patient data
+    data = widget.patientData;
+    patientName = data['name'] ?? 'Unknown';
+  }
+
+  Future<void> _confirmCancel(String appointmentId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Cancel Appointment"),
+        content: const Text(
+          "Are you sure you want to cancel this appointment?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("No"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Yes"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _cancelAppointment(appointmentId);
+    }
+  }
+
+  Future<void> _cancelAppointment(String appointmentId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('appointments')
+          .doc(appointmentId)
+          .update({
+            'status': 'cancelled',
+            'cancelledBy': patientName ?? 'Unknown',
+            'cancelledAt': FieldValue.serverTimestamp(),
+          });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Appointment cancelled successfully'),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      setState(() {});
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to cancel appointment: $e')),
+      );
+    }
   }
 
   @override
@@ -51,7 +106,6 @@ class _DashState extends State<Dash> {
     final int age = data['age'] ?? 0;
     final String gender = data['gender'] ?? 'Not Specified';
     final String bloodGroup = data['bloodGroup'] ?? 'N/A';
-    final String vivacardNumber = data['vivacardNumber'].toString();
     final String lastVisited = data['lastUpdatedDate'] ?? 'N/A';
     final List<String> activeTreatments = data['active_treatments'] != null
         ? List<String>.from(data['active_treatments'])
@@ -63,9 +117,7 @@ class _DashState extends State<Dash> {
         child: Padding(
           padding: EdgeInsets.all(paddingSize),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Profile Section
               Container(
                 height: 120,
                 width: double.infinity,
@@ -171,9 +223,9 @@ class _DashState extends State<Dash> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 8),
 
-              // Active Treatments Section
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -217,52 +269,12 @@ class _DashState extends State<Dash> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: TextButton(
-                          onPressed: () {},
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 0),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: dashColors.backgroundColorBlend,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  "View More",
-                                  style: TextStyles.monText(
-                                    fontSize: dev ? 14 : 20,
-                                    fontWeight: FontWeight.w500,
-                                    color: dashColors.textDarkColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.keyboard_double_arrow_down,
-                                  color: dashColors.textDarkColor,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
 
-              // Upcoming Appointments Section
+              const SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -294,7 +306,6 @@ class _DashState extends State<Dash> {
                       ),
                       const SizedBox(height: 8),
 
-                      // ✅ StreamBuilder showing only requested + confirmed
                       StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('appointments')
@@ -315,11 +326,8 @@ class _DashState extends State<Dash> {
                             );
                           }
                           if (snapshot.hasError) {
-                            debugPrint(
-                              "❌ FIRESTORE ERROR DETAILS: ${snapshot.error}",
-                            );
                             return Text(
-                              "Error loading upcoming appointments",
+                              "Error loading appointments",
                               style: TextStyles.monText(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -328,21 +336,8 @@ class _DashState extends State<Dash> {
                             );
                           }
 
-                          // ✅ Filter out completed or cancelled just in case
                           final allData = snapshot.data?.docs ?? [];
-                          final data = allData.where((doc) {
-                            final status = (doc['status'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                            final isCompleted = doc['isCompleted'] == true;
-                            // Show if it's requested, confirmed, or upcoming, but not completed
-                            return (status == 'requested' ||
-                                    status == 'confirmed' ||
-                                    status == 'upcoming') &&
-                                !isCompleted;
-                          }).toList();
-
-                          if (data.isEmpty) {
+                          if (allData.isEmpty) {
                             return Text(
                               "No upcoming appointments",
                               style: TextStyles.monText(
@@ -355,38 +350,17 @@ class _DashState extends State<Dash> {
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: data.map((doc) {
-                              final appointment =
-                                  doc.data() as Map<String, dynamic>;
-                              final Timestamp? ts =
-                                  appointment['appointmentDate'];
-                              final String dateText = ts != null
+                            children: allData.map((doc) {
+                              final appt = doc.data() as Map<String, dynamic>;
+                              final ts = appt['appointmentDate'] as Timestamp?;
+                              final dateText = ts != null
                                   ? DateFormat(
                                       'MMM dd, yyyy • hh:mm a',
                                     ).format(ts.toDate())
-                                  : 'No date set';
-                              final String illness =
-                                  appointment['illness'] ?? 'N/A';
-                              final String status =
-                                  (appointment['status'] ?? 'Unknown')
-                                      .toString();
-                              final String doctorID =
-                                  appointment['doctorID'] ?? '';
-
-                              Color statusColor;
-                              switch (status.toLowerCase()) {
-                                case 'confirmed':
-                                  statusColor = Colors.green.shade600;
-                                  break;
-                                case 'requested':
-                                  statusColor = Colors.orange.shade600;
-                                  break;
-                                case 'upcoming':
-                                  statusColor = Colors.blue.shade600;
-                                  break;
-                                default:
-                                  statusColor = Colors.grey.shade600;
-                              }
+                                  : 'No date';
+                              final illness = appt['illness'] ?? 'N/A';
+                              final status = appt['status'] ?? 'Unknown';
+                              final doctorID = appt['doctorID'] ?? '';
 
                               return FutureBuilder<DocumentSnapshot>(
                                 future: FirebaseFirestore.instance
@@ -401,90 +375,78 @@ class _DashState extends State<Dash> {
                                             as Map<String, dynamic>;
                                     doctorName = doctorData['name'] ?? 'N/A';
                                   }
-
                                   return Container(
                                     margin: const EdgeInsets.symmetric(
                                       vertical: 6,
                                     ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
-                                    ),
+                                    padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
                                       color: dashColors.backgroundColorBlend,
                                       borderRadius: BorderRadius.circular(14),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.05),
-                                          offset: const Offset(2, 3),
-                                          blurRadius: 6,
-                                        ),
-                                      ],
-                                      border: Border.all(
-                                        color: Colors.grey.withOpacity(0.15),
-                                        width: 0.7,
-                                      ),
                                     ),
-                                    child: Row(
+                                    child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Container(
-                                          height: 12,
-                                          width: 12,
-                                          margin: const EdgeInsets.only(
-                                            top: 5,
-                                            right: 10,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: statusColor,
-                                            shape: BoxShape.circle,
+                                        Text(
+                                          "Dr. $doctorName",
+                                          style: TextStyles.monText(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: dashColors.textDarkColor,
                                           ),
                                         ),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "Dr. $doctorName",
-                                                style: TextStyles.monText(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      dashColors.textDarkColor,
-                                                ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          "Illness: $illness",
+                                          style: TextStyles.monText(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: dashColors.textGreyColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          "Date: $dateText",
+                                          style: TextStyles.monText(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w400,
+                                            color: dashColors.textGreyColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          "Status: $status",
+                                          style: TextStyles.monText(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () =>
+                                                _confirmCancel(doc.id),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
-                                              const SizedBox(height: 3),
-                                              Text(
-                                                illness,
-                                                style: TextStyles.monText(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                  color:
-                                                      dashColors.textGreyColor,
-                                                ),
+                                            ),
+                                            icon: const Icon(
+                                              Icons.cancel,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              "Cancel",
+                                              style: TextStyle(
+                                                color: Colors.white,
                                               ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                dateText,
-                                                style: TextStyles.monText(
-                                                  fontSize: 12.5,
-                                                  fontWeight: FontWeight.w400,
-                                                  color:
-                                                      dashColors.textGreyColor,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                "Status: $status",
-                                                style: TextStyles.monText(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: statusColor,
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -496,6 +458,127 @@ class _DashState extends State<Dash> {
                           );
                         },
                       ),
+
+                      const SizedBox(height: 12),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              showCancelled = !showCancelled;
+                            });
+                          },
+                          icon: Icon(
+                            showCancelled
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: dashColors.textDarkColor,
+                          ),
+                          label: Text(
+                            showCancelled
+                                ? "Hide Cancelled Appointments"
+                                : "Show Cancelled Appointments",
+                            style: TextStyles.monText(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: dashColors.textDarkColor,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      if (showCancelled)
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('appointments')
+                              .where(
+                                'patientID',
+                                isEqualTo:
+                                    FirebaseAuth.instance.currentUser!.uid,
+                              )
+                              .where('status', isEqualTo: 'cancelled')
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                            final cancelled = snapshot.data?.docs ?? [];
+
+                            if (cancelled.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  "No cancelled appointments",
+                                  style: TextStyles.monText(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: dashColors.textGreyColor,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: cancelled.map((doc) {
+                                final data = doc.data() as Map<String, dynamic>;
+                                final ts =
+                                    data['appointmentDate'] as Timestamp?;
+                                final dateText = ts != null
+                                    ? DateFormat(
+                                        'MMM dd, yyyy • hh:mm a',
+                                      ).format(ts.toDate())
+                                    : 'No date';
+                                final illness = data['illness'] ?? 'N/A';
+                                final cancelledBy =
+                                    data['cancelledBy'] ?? 'Unknown';
+
+                                return Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Date: $dateText",
+                                        style: TextStyles.monText(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: dashColors.textDarkColor,
+                                        ),
+                                      ),
+                                      Text(
+                                        "Illness: $illness",
+                                        style: TextStyles.monText(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: dashColors.textGreyColor,
+                                        ),
+                                      ),
+                                      Text(
+                                        "Cancelled by: ${cancelledBy == patientName ? 'You' : cancelledBy}",
+                                        style: TextStyles.monText(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
                     ],
                   ),
                 ),
@@ -503,7 +586,6 @@ class _DashState extends State<Dash> {
 
               const SizedBox(height: 8),
 
-              // Book Appointment + SOS
               Container(
                 height: 50,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -530,9 +612,7 @@ class _DashState extends State<Dash> {
                     Expanded(
                       child: SOSButton(
                         buttonLabel: 'SOS',
-                        onPressed: () {
-                          _openDialPad("108");
-                        },
+                        onPressed: () => _openDialPad("108"),
                         height: 40,
                         width: double.infinity,
                         cfontsize: 11.5,
@@ -541,7 +621,6 @@ class _DashState extends State<Dash> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
             ],
           ),
         ),
